@@ -5,4 +5,4 @@
 - make sure to remove ".git" at the end of github repo links
 
 ## Disclaimer:
-- still requires manual checking inside github pages links to test out expose and explore codes
+- still requires manual checking of README.md answers and GitHub Actions + Pull Request Merge screenshots
