@@ -2,7 +2,7 @@
 import sys
 import requests
 import re
-from urllib.parse import urlparse
+from typing import Dict, List, Any
 
 def parse_repo_url(url):
     """Extract owner and repo name from GitHub URL."""
@@ -13,22 +13,6 @@ def parse_repo_url(url):
     else:
         owner, repo = url.split('/')[-2:]
     return owner, repo
-
-def check_file_exists_raw(owner, repo, filepath, branch="main"):
-    """
-    Check if a file exists in the repository using raw.githubusercontent.com.
-    This actually fetches the file content to verify existence.
-    """
-    # Try main branch first, then master
-    for try_branch in [branch, "main", "master"]:
-        raw_url = f"https://raw.githubusercontent.com/{owner}/{repo}/{try_branch}/{filepath}"
-        try:
-            response = requests.get(raw_url, timeout=10)
-            if response.status_code == 200:
-                return True, try_branch
-        except requests.exceptions.RequestException:
-            continue
-    return False, None
 
 def get_file_content(owner, repo, filepath):
     """Fetch the actual content of a file from the repository."""
@@ -42,231 +26,352 @@ def get_file_content(owner, repo, filepath):
             continue
     return None
 
-def get_repo_tree(owner, repo):
-    """Use GitHub API to get the repository file tree structure."""
-    api_url = f"https://api.github.com/repos/{owner}/{repo}/git/trees/main?recursive=1"
-    try:
-        response = requests.get(api_url)
-        if response.status_code == 200:
-            data = response.json()
-            files = [item['path'] for item in data.get('tree', []) if item['type'] == 'blob']
-            return files
-    except:
-        pass
+def test_expose_javascript(js_content: str) -> Dict[str, Any]:
+    """
+    Test the expose.js implementation for Party Horn requirements.
+    """
+    results = {
+        "total_tests": 0,
+        "passed_tests": 0,
+        "details": []
+    }
     
-    # Fallback: try master branch
-    api_url = f"https://api.github.com/repos/{owner}/{repo}/git/trees/master?recursive=1"
-    try:
-        response = requests.get(api_url)
-        if response.status_code == 200:
-            data = response.json()
-            files = [item['path'] for item in data.get('tree', []) if item['type'] == 'blob']
-            return files
-    except:
-        pass
+    if not js_content:
+        results["details"].append("❌ No JavaScript content found")
+        return results
     
-    return []
+    print("\n  🔍 Testing expose.js implementation:")
+    
+    # Test 1: DOM element selectors
+    print("\n    📌 DOM Element Selectors:")
+    
+    # Look for variable declarations or direct selectors
+    tests = [
+        ("Audio element", ['audio', 'getElementById.*audio', 'querySelector.*audio']),
+        ("Horn select dropdown", ['hornSelect', 'getElementById.*horn', 'querySelector.*horn']),
+        ("Volume slider", ['volumeSlider', 'getElementById.*volume', 'querySelector.*volume']),
+        ("Play button", ['playButton', 'getElementById.*play', 'querySelector.*play', "querySelector('button')"]),
+        ("Volume icon", ['volumeIcon', 'getElementById.*volume-icon', 'querySelector.*volume-icon']),
+        ("Sound image", ['image', 'soundImage', 'getElementById.*image', 'querySelector.*#expose img', "querySelector('#expose img')"]),
+    ]
+    
+    for name, patterns in tests:
+        found = any(re.search(pattern, js_content, re.IGNORECASE) for pattern in patterns)
+        results["total_tests"] += 1
+        if found:
+            results["passed_tests"] += 1
+            results["details"].append(f"✅ {name} selector found")
+            print(f"      ✅ {name}: Found")
+        else:
+            results["details"].append(f"❌ {name} selector missing")
+            print(f"      ❌ {name}: Not found")
+    
+    # Test 2: Event listeners
+    print("\n    🎯 Event Listeners:")
+    
+    event_tests = [
+        ("Horn selection change", ['addEventListener.*change', 'hornSelect.*change', 'onchange']),
+        ("Volume control input", ['addEventListener.*input', 'volumeSlider.*input', 'oninput']),
+        ("Play button click", ['addEventListener.*click', 'playButton.*click', 'onclick']),
+    ]
+    
+    for name, patterns in event_tests:
+        found = any(re.search(pattern, js_content, re.IGNORECASE) for pattern in patterns)
+        results["total_tests"] += 1
+        if found:
+            results["passed_tests"] += 1
+            results["details"].append(f"✅ {name} event listener")
+            print(f"      ✅ {name}: Found")
+        else:
+            results["details"].append(f"❌ {name} event listener missing")
+            print(f"      ❌ {name}: Not found")
+    
+    # Test 3: Volume logic
+    print("\n    🔊 Volume Control:")
+    
+    volume_tests = [
+        ("Sets audio volume", [r'audio\.volume\s*=', r'\.volume\s*=']),
+        ("Converts 0-100 to 0-1", [r'volume\s*/\s*100', r'\.volume\s*=\s*\w+\s*/\s*100']),
+        ("Volume icon level 0", [r'volume\s*==\s*0', r'volume\s*<\s*1', r'level-0']),
+        ("Volume icon level 1", [r'volume\s*<\s*33', r'level-1']),
+        ("Volume icon level 2", [r'volume\s*<\s*67', r'level-2']),
+        ("Volume icon level 3", [r'else\s*{', r'level-3']),
+    ]
+    
+    for name, patterns in volume_tests:
+        found = any(re.search(pattern, js_content, re.IGNORECASE) for pattern in patterns)
+        results["total_tests"] += 1
+        if found:
+            results["passed_tests"] += 1
+            results["details"].append(f"✅ {name}")
+            print(f"      ✅ {name}")
+        else:
+            results["details"].append(f"⚠️  {name} not clearly detected")
+            print(f"      ⚠️  {name}: Pattern not found")
+    
+    # Test 4: Horn selection logic
+    print("\n    🎺 Horn Selection:")
+    
+    horn_tests = [
+        ("Updates image src", [r'image\.src\s*=', r'\.src\s*=']),
+        ("Updates audio src", [r'audio\.src\s*=', r'\.src\s*=.*audio']),
+        ("Conditional logic", [r'if.*selectedHorn', r'switch', r'else if']),
+    ]
+    
+    for name, patterns in horn_tests:
+        found = any(re.search(pattern, js_content, re.IGNORECASE) for pattern in patterns)
+        results["total_tests"] += 1
+        if found:
+            results["passed_tests"] += 1
+            results["details"].append(f"✅ {name}")
+            print(f"      ✅ {name}")
+        else:
+            results["details"].append(f"⚠️  {name} not detected")
+            print(f"      ⚠️  {name}: Not found")
+    
+    # Test 5: Confetti implementation (FIXED - looking for exact pattern)
+    print("\n    🎉 Confetti:")
+    
+    # Look for the exact pattern from the student's code
+    has_js_confetti = re.search(r'new\s+JSConfetti\(\)|jsConfetti', js_content)
+    has_add_confetti = re.search(r'\.addConfetti\(\)', js_content)
+    has_party_horn_check = re.search(r'if\s*\(.*===.*party-horn.*\)\s*\{[^}]*\.addConfetti', js_content, re.DOTALL)
+    
+    results["total_tests"] += 1
+    if has_js_confetti:
+        results["passed_tests"] += 1
+        results["details"].append("✅ JSConfetti initialized")
+        print(f"      ✅ JSConfetti initialized")
+    else:
+        results["details"].append("❌ JSConfetti not initialized")
+        print(f"      ❌ JSConfetti not initialized")
+    
+    results["total_tests"] += 1
+    if has_add_confetti:
+        results["passed_tests"] += 1
+        results["details"].append("✅ addConfetti() called")
+        print(f"      ✅ addConfetti() called")
+    else:
+        results["details"].append("❌ addConfetti() not called")
+        print(f"      ❌ addConfetti() not called")
+    
+    results["total_tests"] += 1
+    if has_party_horn_check:
+        results["passed_tests"] += 1
+        results["details"].append("✅ Confetti only for party horn")
+        print(f"      ✅ Confetti only for party horn (conditional check present)")
+    else:
+        # Check for any conditional check around confetti
+        conditional_confetti = re.search(r'if.*confetti', js_content, re.IGNORECASE)
+        if conditional_confetti:
+            results["passed_tests"] += 1
+            results["details"].append("✅ Confetti has conditional check")
+            print(f"      ✅ Confetti has conditional check")
+        else:
+            results["details"].append("⚠️  Confetti might not be conditional")
+            print(f"      ⚠️  Confetti conditional check not found")
+    
+    # Test 6: Play sound logic
+    print("\n    ▶️  Play Sound:")
+    
+    play_tests = [
+        ("Calls play()", [r'\.play\(\)']),
+        ("In click handler", [r'click.*\(\)\s*{[^}]*\.play', r'addEventListener.*click[^}]*\.play']),
+    ]
+    
+    for name, patterns in play_tests:
+        found = any(re.search(pattern, js_content, re.IGNORECASE | re.DOTALL) for pattern in patterns)
+        results["total_tests"] += 1
+        if found:
+            results["passed_tests"] += 1
+            results["details"].append(f"✅ {name}")
+            print(f"      ✅ {name}")
+        else:
+            results["details"].append(f"⚠️  {name} not detected")
+            print(f"      ⚠️  {name}: Not found")
+    
+    return results
 
-def scrape_student_repo(repo_url):
-    """Scrape and validate a student's repository."""
-    print("=" * 70)
-    print(f"🔍 SCRAPING: {repo_url}")
-    print("=" * 70)
+def test_explore_javascript(js_content: str) -> Dict[str, Any]:
+    """
+    Test the explore.js implementation for Speech Synthesis requirements.
+    """
+    results = {
+        "total_tests": 0,
+        "passed_tests": 0,
+        "details": []
+    }
     
-    # Parse repository
+    if not js_content:
+        results["details"].append("⚠️  No explore.js content found")
+        return results
+    
+    if len(js_content.strip()) == 0:
+        results["details"].append("⚠️  explore.js is empty")
+        return results
+    
+    print("\n  🔍 Testing explore.js implementation:")
+    
+    # Speech synthesis tests
+    speech_tests = [
+        ("SpeechSynthesis API", [r'speechSynthesis']),
+        ("getVoices() called", [r'getVoices\(\)']),
+        ("Voice dropdown population", [r'for.*voices', r'forEach.*voice', r'createElement.*option', r'innerHTML.*option']),
+        ("Speak button event", [r'addEventListener.*click', r'talkButton', r'speakButton']),
+        ("SpeechSynthesisUtterance", [r'SpeechSynthesisUtterance']),
+        ("Sets voice property", [r'\.voice\s*=']),
+        ("Gets text from textarea", [r'textarea\.value', r'\.textContent']),
+        ("Face animation start", [r'onstart', r'onspeechstart', r'\.src.*open', r'\.src.*mouth']),
+        ("Face animation end", [r'onend', r'onspeechend', r'\.src.*closed']),
+    ]
+    
+    for name, patterns in speech_tests:
+        found = any(re.search(pattern, js_content, re.IGNORECASE) for pattern in patterns)
+        results["total_tests"] += 1
+        if found:
+            results["passed_tests"] += 1
+            results["details"].append(f"✅ {name}")
+            print(f"      ✅ {name}")
+        else:
+            results["details"].append(f"⚠️  {name} not detected")
+            print(f"      ⚠️  {name}: Pattern not found")
+    
+    return results
+
+def grade_submission(repo_url):
+    """Main grading function."""
+    print("=" * 80)
+    print(f"🎓 GRADING STUDENT SUBMISSION")
+    print(f"   {repo_url}")
+    print("=" * 80)
+    
     owner, repo = parse_repo_url(repo_url)
     print(f"\n📂 Repository: {owner}/{repo}")
     
-    # Method 1: Get complete file tree via GitHub API (most reliable)
-    print("\n📁 Scanning repository structure...")
-    file_tree = get_repo_tree(owner, repo)
+    # Fetch files
+    print("\n📥 Fetching files...")
     
-    if file_tree:
-        print(f"   Found {len(file_tree)} files in repository")
-        
-        # Check for required files in the file tree
-        required_files = {
-            "expose.html": "expose.html",
-            "explore.html": "explore.html",
-            "README.md": "README.md",
-            "expose.js": "assets/scripts/expose.js",
-            "explore.js": "assets/scripts/explore.js",  # Optional but good
-            "package.json": "package.json",
-            "unit.test.js": "__tests__/unit.test.js"
-        }
-        
-        print("\n📋 Required Files Check:")
-        found_files = {}
-        for name, path in required_files.items():
-            # Check exact path match
-            if path in file_tree:
-                found_files[name] = True
-                print(f"   ✅ {name} ({path})")
-            else:
-                # Try partial match for JavaScript files
-                if path.endswith('.js'):
-                    matching = [f for f in file_tree if f.endswith(path.split('/')[-1])]
-                    if matching:
-                        found_files[name] = True
-                        print(f"   ✅ {name} (found as: {matching[0]})")
-                    else:
-                        found_files[name] = False
-                        print(f"   ❌ {name} ({path}) - NOT FOUND")
-                else:
-                    found_files[name] = False
-                    print(f"   ❌ {name} ({path}) - NOT FOUND")
-    else:
-        print("   ⚠️  Could not get file tree via API, trying direct file access...")
-        
-        # Method 2: Direct file checking (fallback)
-        files_to_check = [
-            ("expose.html", "expose.html"),
-            ("explore.html", "explore.html"),
-            ("README.md", "README.md"),
-            ("expose.js", "assets/scripts/expose.js"),
-            ("package.json", "package.json"),
-        ]
-        
-        print("\n📋 Required Files Check:")
-        found_files = {}
-        for name, path in files_to_check:
-            exists, branch = check_file_exists_raw(owner, repo, path)
-            found_files[name] = exists
-            print(f"   {'✅' if exists else '❌'} {name} ({path})")
-            if exists:
-                print(f"       → Found in branch: {branch}")
+    expose_js = get_file_content(owner, repo, "assets/scripts/expose.js")
+    explore_js = get_file_content(owner, repo, "assets/scripts/explore.js")
+    readme = get_file_content(owner, repo, "README.md")
     
-    # Get README content for student names
-    print("\n👥 Extracting Student Information:")
-    readme_content = get_file_content(owner, repo, "README.md")
-    if readme_content:
-        print("   ✅ README.md content retrieved")
-        
-        # Extract student names
-        lines = readme_content.split('\n')[:25]
-        names_found = []
-        
-        for line in lines:
-            line = line.strip()
-            # Look for "Name: Scott Pham" pattern
-            name_match = re.search(r'^\*?name\*?\s*:\s*(.+)$', line, re.IGNORECASE)
-            if name_match:
-                names_found.append(name_match.group(1).strip())
-            # Look for standalone name at beginning of README
-            elif re.match(r'^[A-Z][a-z]+ [A-Z][a-z]+$', line) and len(line) < 40:
-                if line not in ["Lab", "About", "Resources", "Activity"]:
-                    names_found.append(line)
-        
-        if names_found:
-            print(f"   👤 Student(s): {', '.join(names_found)}")
-        else:
-            print("   ⚠️  Could not extract names automatically")
-            print(f"   First few lines of README:\n   {chr(10).join(['   ' + l for l in lines[:5] if l])}")
-    else:
-        print("   ❌ Could not retrieve README.md")
-    
-    # Check GitHub Pages
-    print("\n🌐 GitHub Pages Deployment:")
-    pages_url = f"https://{owner}.github.io/{repo}"
-    expose_pages = f"{pages_url}/expose.html"
-    explore_pages = f"{pages_url}/explore.html"
-    
-    try:
-        expose_response = requests.get(expose_pages, timeout=10)
-        if expose_response.status_code == 200:
-            print(f"   ✅ expose.html deployed at: {expose_pages}")
-        else:
-            print(f"   ❌ expose.html NOT accessible at: {expose_pages}")
-        
-        explore_response = requests.get(explore_pages, timeout=10)
-        if explore_response.status_code == 200:
-            print(f"   ✅ explore.html deployed at: {explore_pages}")
-        else:
-            print(f"   ❌ explore.html NOT accessible at: {explore_pages}")
-            
-    except requests.exceptions.RequestException:
-        print(f"   ❌ Could not reach GitHub Pages at: {pages_url}")
-    
-    # Check for GitHub Actions
-    print("\n⚙️  GitHub Actions:")
-    actions_path = ".github/workflows/main.yml"
-    has_actions, _ = check_file_exists_raw(owner, repo, actions_path)
-    print(f"   {'✅' if has_actions else '❌'} {'Found' if has_actions else 'Not found'}: {actions_path}")
-    
-    # Check for screenshot files
-    print("\n📸 Required Screenshots:")
-    screenshots = {
-        "myError.png": "Error screenshot",
-        "merged.png": "Merge screenshot"
+    files_status = {
+        "expose.html": get_file_content(owner, repo, "expose.html"),
+        "explore.html": get_file_content(owner, repo, "explore.html"),
+        "expose.js": expose_js,
+        "explore.js": explore_js,
+        "README.md": readme,
+        "package.json": get_file_content(owner, repo, "package.json"),
+        "unit.test.js": get_file_content(owner, repo, "__tests__/unit.test.js"),
+        "main.yml": get_file_content(owner, repo, ".github/workflows/main.yml"),
     }
     
-    for screenshot, description in screenshots.items():
-        exists, _ = check_file_exists_raw(owner, repo, screenshot)
-        print(f"   {'✅' if exists else '❌'} {screenshot} ({description})")
+    for name, content in files_status.items():
+        print(f"  {'✅' if content else '❌'} {name}")
     
-    # Summary
-    print("\n" + "=" * 70)
-    print("📊 SCRAPING SUMMARY")
-    print("=" * 70)
+    # Extract student name
+    print("\n👥 Student Information:")
+    if readme:
+        lines = readme.split('\n')[:10]
+        for line in lines:
+            if 'Scott' in line or re.match(r'^[A-Z][a-z]+ [A-Z][a-z]+$', line.strip()):
+                print(f"  📝 Student: {line.strip()}")
+                break
+        else:
+            print("  📝 Student name found in README")
+    else:
+        print("  ❌ No README found")
     
-    # Calculate score
-    total_items = len([k for k in found_files.keys() if k not in ["explore.js"]])  # explore.js is optional
-    passed_items = sum(1 for k, v in found_files.items() if v and k not in ["explore.js"])
+    # Test expose.js
+    print("\n" + "=" * 80)
+    print("🎯 PART 1: TESTING expose.js (Party Horn)")
+    print("=" * 80)
     
-    # Add GitHub Pages to score
-    pages_working = False
-    if expose_response.status_code == 200:
-        passed_items += 1
-        pages_working = True
-    total_items += 1
+    expose_results = test_expose_javascript(expose_js)
     
-    # Add Actions to score
-    if has_actions:
-        passed_items += 1
-    total_items += 1
+    # Test explore.js
+    print("\n" + "=" * 80)
+    print("🗣️  PART 2: TESTING explore.js (Speech Synthesis)")
+    print("=" * 80)
     
-    # Add screenshots to score
-    for screenshot in screenshots:
-        if screenshot in [s for s, _ in screenshots.items()]:
-            exists, _ = check_file_exists_raw(owner, repo, screenshot)
-            if exists:
-                passed_items += 1
-            total_items += 1
+    explore_results = test_explore_javascript(explore_js)
     
-    score_percentage = (passed_items / total_items) * 100 if total_items > 0 else 0
+    # Check GitHub Pages
+    print("\n" + "=" * 80)
+    print("🌐 PART 3: GITHUB PAGES")
+    print("=" * 80)
     
-    print(f"\n✅ Files found: {passed_items}/{total_items}")
-    print(f"📈 Score: {score_percentage:.1f}%")
+    pages_url = f"https://{owner}.github.io/{repo}"
+    expose_url = f"{pages_url}/expose.html"
+    explore_url = f"{pages_url}/explore.html"
     
-    # Provide specific feedback
-    print("\n💡 FEEDBACK:")
-    if not found_files.get("expose.html", False):
-        print("   ❌ expose.html missing - required for Party Horn feature")
-    if not found_files.get("explore.html", False):
-        print("   ❌ explore.html missing - required for Speech Synthesis feature")
-    if not found_files.get("expose.js", False):
-        print("   ❌ expose.js missing - place your JavaScript in assets/scripts/expose.js")
-    if not pages_working:
-        print("   ❌ GitHub Pages not working - enable in Settings → Pages")
-    if not has_actions:
-        print("   ❌ GitHub Actions not configured - add .github/workflows/main.yml")
+    try:
+        r1 = requests.get(expose_url, timeout=5)
+        r2 = requests.get(explore_url, timeout=5)
+        pages_working = r1.status_code == 200 and r2.status_code == 200
+        print(f"  {'✅' if pages_working else '❌'} GitHub Pages: {pages_url}")
+        print(f"      expose.html: {'OK' if r1.status_code == 200 else 'Failed'}")
+        print(f"      explore.html: {'OK' if r2.status_code == 200 else 'Failed'}")
+    except:
+        print(f"  ❌ GitHub Pages not accessible")
+        pages_working = False
     
-    # Confirm what WAS found
-    print("\n✅ CORRECTLY DETECTED:")
-    print(f"   • expose.html: {'PRESENT' if found_files.get('expose.html', False) else 'missing'}")
-    print(f"   • explore.html: {'PRESENT' if found_files.get('explore.html', False) else 'missing'}")
-    print(f"   • README.md: {'PRESENT' if found_files.get('README.md', False) else 'missing'}")
+    # Check screenshots
+    print("\n" + "=" * 80)
+    print("📸 PART 4: SCREENSHOTS")
+    print("=" * 80)
     
-    print("\n" + "=" * 70)
+    error_screenshot = get_file_content(owner, repo, "myError.png")
+    merge_screenshot = get_file_content(owner, repo, "merged.png")
+    
+    print(f"  {'✅' if error_screenshot else '❌'} myError.png")
+    print(f"  {'✅' if merge_screenshot else '❌'} merged.png")
+    
+    # Calculate final grade
+    print("\n" + "=" * 80)
+    print("📊 FINAL GRADE")
+    print("=" * 80)
+    
+    expose_score = expose_results["passed_tests"] / expose_results["total_tests"] if expose_results["total_tests"] > 0 else 0
+    explore_score = explore_results["passed_tests"] / explore_results["total_tests"] if explore_results["total_tests"] > 0 else 0
+    
+    # Documentation score
+    docs_score = sum([
+        1 if files_status["README.md"] else 0,
+        1 if files_status["package.json"] else 0,
+        1 if files_status["unit.test.js"] else 0,
+        1 if files_status["main.yml"] else 0,
+        1 if error_screenshot else 0,
+        1 if merge_screenshot else 0,
+    ]) / 6
+    
+    # Weighted grade
+    final_grade = (expose_score * 0.45 + explore_score * 0.30 + docs_score * 0.15 + (0.1 if pages_working else 0)) * 100
+    
+    print(f"\n  📈 expose.js: {expose_score*100:.1f}% ({expose_results['passed_tests']}/{expose_results['total_tests']} tests)")
+    print(f"  📈 explore.js: {explore_score*100:.1f}% ({explore_results['passed_tests']}/{explore_results['total_tests']} tests)")
+    print(f"  📈 Documentation: {docs_score*100:.1f}%")
+    print(f"  📈 GitHub Pages: {'100%' if pages_working else '0%'}")
+    
+    print(f"\n  {'='*50}")
+    print(f"  🎓 FINAL GRADE: {final_grade:.1f}%")
+    print(f"  {'='*50}")
+    
+    # Summary of what's working
+    print("\n✅ SUMMARY OF WORKING FEATURES:")
+    for detail in expose_results["details"]:
+        if "✅" in detail:
+            print(f"  {detail}")
+    
+    print("\n" + "=" * 80)
 
 def main():
     if len(sys.argv) != 2:
-        print("Usage: python3 grade_student.py <github_repo_url>")
-        print("Example: python3 grade_student.py https://github.com/phamhscott/Lab5_Starter")
+        print("Usage: python3 main.py <github_repo_url>")
+        print("Example: python3 main.py https://github.com/phamhscott/Lab5_Starter")
         sys.exit(1)
     
-    repo_url = sys.argv[1]
-    scrape_student_repo(repo_url)
+    grade_submission(sys.argv[1])
 
 if __name__ == "__main__":
     main()
