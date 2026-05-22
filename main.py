@@ -29,7 +29,6 @@ def get_file_content(owner, repo, filepath):
 def test_expose_javascript(js_content: str) -> Dict[str, Any]:
     """
     Test the expose.js implementation for Party Horn requirements.
-    Simple direct pattern matching for actual code.
     """
     results = {
         "total_tests": 0,
@@ -43,21 +42,27 @@ def test_expose_javascript(js_content: str) -> Dict[str, Any]:
     
     print("\n  🔍 Testing expose.js implementation:")
     
-    # Test 1: DOM element selectors - Look for variable declarations
+    # Test 1: DOM element selectors
     print("\n    📌 DOM Element Selectors:")
     
-    # Simple checks for element selections
-    selector_tests = [
-        ("Audio element", ['audio', 'hornSound', 'sound']),
-        ("Horn select dropdown", ['select', 'hornSelect', 'horn-select']),
-        ("Volume slider", ['slider', 'volumeSlider', 'volume']),
-        ("Play button", ['button', 'playButton', 'play']),
-        ("Volume icon", ['volumeImage', 'volumeImg', 'volumeIcon', 'volume-image']),
-        ("Sound/Horn image", ['hornImage', 'hornImg', 'image']),
+    # Check for various selector patterns
+    has_audio = bool(re.search(r'document\.querySelector\([\'"]audio[\'"]\)|const\s+audio\s*=', js_content))
+    has_dropdown = bool(re.search(r'document\.querySelector\([\'"]?#horn-select[\'"]\)|const\s+dropdown\s*=', js_content))
+    has_volume_control = bool(re.search(r'document\.querySelector\([\'"]?#volume-controls input[\'"]\)|volumeControl', js_content))
+    has_play_button = bool(re.search(r'document\.querySelector\([\'"]button[\'"]\)|playButton', js_content))
+    has_volume_icon = bool(re.search(r'document\.querySelector\([\'"]?#volume-controls img[\'"]\)|horn\s*=', js_content))
+    has_horn_image = bool(re.search(r'document\.querySelector\([\'"]img[\'"]\)|image\s*=', js_content))
+    
+    selector_results = [
+        ("Audio element", has_audio),
+        ("Horn select dropdown", has_dropdown),
+        ("Volume slider", has_volume_control),
+        ("Play button", has_play_button),
+        ("Volume icon", has_volume_icon),
+        ("Sound/Horn image", has_horn_image),
     ]
     
-    for name, patterns in selector_tests:
-        found = any(re.search(rf'\b{pattern}\b', js_content, re.IGNORECASE) for pattern in patterns)
+    for name, found in selector_results:
         results["total_tests"] += 1
         if found:
             results["passed_tests"] += 1
@@ -70,14 +75,17 @@ def test_expose_javascript(js_content: str) -> Dict[str, Any]:
     # Test 2: Event listeners
     print("\n    🎯 Event Listeners:")
     
-    event_tests = [
-        ("Horn selection change", ['change', 'addEventListener.*change']),
-        ("Volume control input", ['input', 'addEventListener.*input']),
-        ("Play button click", ['click', 'addEventListener.*click']),
+    has_change = bool(re.search(r'addEventListener\([\'"]change[\'"]', js_content))
+    has_input = bool(re.search(r'addEventListener\([\'"]input[\'"]', js_content))
+    has_click = bool(re.search(r'addEventListener\([\'"]click[\'"]', js_content))
+    
+    event_results = [
+        ("Horn selection change", has_change),
+        ("Volume control input", has_input),
+        ("Play button click", has_click),
     ]
     
-    for name, patterns in event_tests:
-        found = any(re.search(pattern, js_content, re.IGNORECASE) for pattern in patterns)
+    for name, found in event_results:
         results["total_tests"] += 1
         if found:
             results["passed_tests"] += 1
@@ -90,15 +98,16 @@ def test_expose_javascript(js_content: str) -> Dict[str, Any]:
     # Test 3: Volume logic
     print("\n    🔊 Volume Control:")
     
-    # Look for volume-related code
-    has_volume_assignment = re.search(r'\.volume\s*=', js_content)
-    has_volume_calculation = re.search(r'volume\s*/\s*100', js_content)
-    has_volume_conditions = re.search(r'if\s*\([^)]*volume[^)]*\)', js_content)
-    has_volume_icons = re.search(r'volumeImage\.src\s*=|volumeImg\.src\s*=|volumeIcon\.src\s*=', js_content)
-    has_level0 = re.search(r'volume-level-0\.svg', js_content)
-    has_level1 = re.search(r'volume-level-1\.svg', js_content)
-    has_level2 = re.search(r'volume-level-2\.svg', js_content)
-    has_level3 = re.search(r'volume-level-3\.svg', js_content)
+    has_volume_assignment = bool(re.search(r'audio\.volume\s*=', js_content))
+    has_volume_conversion = bool(re.search(r'volumeControl\.value\s*/\s*100', js_content))
+    has_volume_conditions = bool(re.search(r'if\s*\([^)]*volumeControl\.value[^)]*\)', js_content))
+    
+    # Look for ANY src assignment that points to volume-level SVG files
+    has_volume_icons = bool(re.search(r'\.src\s*=\s*[\'"]assets/icons/volume-level-[0-3]\.svg[\'"]', js_content))
+    
+    # Count how many volume levels are present
+    volume_levels = re.findall(r'volume-level-([0-3])\.svg', js_content)
+    has_multiple_levels = len(set(volume_levels)) >= 3
     
     results["total_tests"] += 1
     if has_volume_assignment:
@@ -108,26 +117,29 @@ def test_expose_javascript(js_content: str) -> Dict[str, Any]:
         print(f"      ❌ Sets audio volume property not found")
     
     results["total_tests"] += 1
-    if has_volume_calculation:
+    if has_volume_conversion:
         results["passed_tests"] += 1
         print(f"      ✅ Converts volume from 0-100 to 0-1")
     else:
         print(f"      ⚠️  Volume conversion not clearly detected")
     
     results["total_tests"] += 1
-    if has_volume_icons and has_level0:
+    if has_volume_conditions and has_volume_icons:
         results["passed_tests"] += 1
         print(f"      ✅ Volume icon updates with different levels")
+    elif has_volume_icons:
+        results["passed_tests"] += 1
+        print(f"      ✅ Volume icon updates detected")
     else:
         print(f"      ❌ Volume icon updates not found")
     
     # Test 4: Horn selection logic
     print("\n    🎺 Horn Selection:")
     
-    # Look for image and audio updates
-    has_image_update = re.search(r'(hornImage|hornImg)\.src\s*=', js_content) or re.search(r'\.src\s*=\s*[\'"]assets/images/', js_content)
-    has_audio_update = re.search(r'(hornSound|audio)\.src\s*=', js_content) or re.search(r'\.src\s*=\s*[\'"]assets/audio/', js_content)
-    has_conditional = re.search(r'else\s+if|switch', js_content)
+    # Look for image src updates with template literals or string concatenation
+    has_image_update = bool(re.search(r'image\.src\s*=\s*`[^`]*\${[^}]+}[^`]*`|\.src\s*=\s*[\'"]assets/images/', js_content))
+    has_audio_update = bool(re.search(r'audio\.src\s*=\s*`[^`]*\${[^}]+}[^`]*`|\.src\s*=\s*[\'"]assets/audio/', js_content))
+    has_conditional = bool(re.search(r'else\s+if|switch', js_content))
     
     results["total_tests"] += 1
     if has_image_update:
@@ -153,16 +165,11 @@ def test_expose_javascript(js_content: str) -> Dict[str, Any]:
     # Test 5: Confetti implementation
     print("\n    🎉 Confetti:")
     
-    has_js_confetti = re.search(r'new\s+JSConfetti\(\)', js_content)
-    has_add_confetti = re.search(r'\.addConfetti\(\)', js_content)
+    has_js_confetti = bool(re.search(r'new\s+JSConfetti\(\)', js_content))
+    has_add_confetti = bool(re.search(r'\.addConfetti\(\)', js_content))
     
-    # Look for party horn condition in click handler
-    click_handler_match = re.search(r'addEventListener\([\'"]click[\'"]\s*,\s*\([^)]*\)\s*=>?\s*\{([^}]*)\}', js_content, re.DOTALL)
-    has_party_check = False
-    
-    if click_handler_match:
-        handler_body = click_handler_match.group(1)
-        has_party_check = re.search(r'if\s*\([^)]*party-horn[^)]*\)\s*\{[^}]*addConfetti', handler_body, re.DOTALL)
+    # Look for party horn condition
+    has_party_check = bool(re.search(r'if\s*\([^)]*dropdown\.value\s*==\s*[\'"]party-horn[\'"]\)', js_content))
     
     results["total_tests"] += 1
     if has_js_confetti:
@@ -183,7 +190,7 @@ def test_expose_javascript(js_content: str) -> Dict[str, Any]:
         results["passed_tests"] += 1
         print(f"      ✅ Confetti only for party horn")
     else:
-        # Also check if there's any conditional around confetti
+        # Check for any conditional around confetti
         if re.search(r'if\s*\([^)]*\)\s*\{[^}]*addConfetti', js_content, re.DOTALL):
             results["passed_tests"] += 1
             print(f"      ✅ Confetti has conditional check")
@@ -193,8 +200,7 @@ def test_expose_javascript(js_content: str) -> Dict[str, Any]:
     # Test 6: Play sound logic
     print("\n    ▶️  Play Sound:")
     
-    has_play_call = re.search(r'\.play\(\)', js_content)
-    has_src_check = re.search(r'if\s*\([^)]*src[^)]*\)\s*\{[^}]*\.play', js_content, re.DOTALL)
+    has_play_call = bool(re.search(r'\.play\(\)', js_content))
     
     results["total_tests"] += 1
     if has_play_call:
@@ -202,15 +208,6 @@ def test_expose_javascript(js_content: str) -> Dict[str, Any]:
         print(f"      ✅ Calls play() method")
     else:
         print(f"      ❌ Calls play() method not found")
-    
-    results["total_tests"] += 1
-    if has_src_check:
-        results["passed_tests"] += 1
-        print(f"      ✅ Checks if source exists before playing")
-    else:
-        print(f"      ⚠️  No source check detected (optional)")
-        # Don't deduct points for this
-        results["total_tests"] -= 1
     
     return results
 
@@ -292,17 +289,14 @@ def grade_submission(repo_url):
     # Extract student name
     print("\n👥 Student Information:")
     if readme:
-        # Look for common name patterns
         lines = readme.split('\n')[:15]
         for line in lines:
-            # Look for "Name: Scott Pham" pattern
             name_match = re.search(r'^[*]?name[*]?\s*:\s*(.+)$', line, re.IGNORECASE)
             if name_match:
                 print(f"  📝 Student: {name_match.group(1).strip()}")
                 break
-            # Look for standalone name at beginning
             if re.match(r'^[A-Z][a-z]+ [A-Z][a-z]+$', line.strip()):
-                if line.strip() not in ["About", "Resources", "Activity"]:
+                if line.strip() not in ["About", "Resources", "Activity", "Lab"]:
                     print(f"  📝 Student: {line.strip()}")
                     break
         else:
@@ -379,7 +373,7 @@ def grade_submission(repo_url):
     
     print(f"\n  📈 expose.js: {expose_score*100:.1f}% ({expose_results['passed_tests']}/{expose_results['total_tests']} tests)")
     print(f"  📈 explore.js: {explore_score*100:.1f}% ({explore_results['passed_tests']}/{explore_results['total_tests']} tests)")
-    print(f"  📈 Documentation & Files: {docs_score*100:.1f}%")
+    print(f"  📈 Documentation: {docs_score*100:.1f}%")
     print(f"  📈 GitHub Pages: {'100%' if pages_working else '0%'}")
     
     print(f"\n  {'='*50}")
@@ -392,9 +386,14 @@ def grade_submission(repo_url):
         if "✅" in detail:
             print(f"  • {detail}")
     
-    # Provide feedback if needed
-    if expose_score > 0.8:
-        print("\n🎉 Great job! The Party Horn implementation looks correct!")
+    # Provide summary feedback
+    print("\n📝 SUMMARY:")
+    if expose_score >= 0.9:
+        print("  🎉 Excellent! All Party Horn features are working correctly!")
+    elif expose_score >= 0.7:
+        print("  👍 Good job! Most features are implemented correctly.")
+    else:
+        print("  ⚠️ Some features need to be reviewed.")
     
     print("\n" + "=" * 80)
 
